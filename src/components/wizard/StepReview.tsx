@@ -4,9 +4,10 @@ import type { FormData } from "@/app/brief/[token]/page";
 
 interface Props {
   formData: FormData;
+  onNotesChange: (notes: string) => void;
 }
 
-export function StepReview({ formData }: Props) {
+export function StepReview({ formData, onNotesChange }: Props) {
   const { business_info, visual_identity, content, social_links, photos } = formData;
 
   const filledServices = content.services.filter((s) => s.title);
@@ -46,7 +47,9 @@ export function StepReview({ formData }: Props) {
             <div className="col-span-2">
               <span className="text-surface-500">Activité :</span>{" "}
               {business_info.activity_description
-                ? business_info.activity_description.slice(0, 120) + "..."
+                ? business_info.activity_description.length > 120
+                  ? business_info.activity_description.slice(0, 120) + "..."
+                  : business_info.activity_description
                 : "—"}
             </div>
             <div>
@@ -155,6 +158,8 @@ export function StepReview({ formData }: Props) {
             className="textarea-field"
             placeholder="Quelque chose à ajouter ? Demandes spéciales, deadline, fonctionnalités souhaitées..."
             rows={3}
+            value={formData.additional_notes}
+            onChange={(e) => onNotesChange(e.target.value)}
           />
         </div>
       </div>

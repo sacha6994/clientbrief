@@ -210,6 +210,7 @@ export default function HomePage() {
             <a
               href="https://irya.fr"
               target="_blank"
+              rel="noopener noreferrer"
               className="text-brand-600 hover:underline font-medium"
             >
               IRYA

@@ -312,7 +312,12 @@ export default function BriefWizardPage() {
           )}
 
           {currentStep === "review" && (
-            <StepReview formData={formData} />
+            <StepReview
+              formData={formData}
+              onNotesChange={(notes) =>
+                setFormData((prev) => ({ ...prev, additional_notes: notes }))
+              }
+            />
           )}
         </div>
 

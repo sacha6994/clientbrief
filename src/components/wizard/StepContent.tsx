@@ -13,9 +13,11 @@ interface Props {
 
 export function StepContent({ data, businessName, activity, onChange }: Props) {
   const [generating, setGenerating] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const generateText = async (field: string, prompt: string) => {
     setGenerating(field);
+    setError(null);
     try {
       const res = await fetch("/api/generate-text", {
         method: "POST",
@@ -27,12 +29,18 @@ export function StepContent({ data, businessName, activity, onChange }: Props) {
           prompt,
         }),
       });
+      if (!res.ok) {
+        setError("La génération a échoué. Réessayez.");
+        return;
+      }
       const result = await res.json();
       if (result.text) {
         onChange(field, result.text);
+      } else {
+        setError("Aucun texte généré. Réessayez.");
       }
     } catch {
-      console.error("AI generation failed");
+      setError("Erreur de connexion. Vérifiez votre réseau.");
     } finally {
       setGenerating(null);
     }
@@ -74,6 +82,12 @@ export function StepContent({ data, businessName, activity, onChange }: Props) {
           à partir de vos infos entreprise.
         </span>
       </div>
+
+      {error && (
+        <div className="mb-6 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="space-y-6">
         <div>
