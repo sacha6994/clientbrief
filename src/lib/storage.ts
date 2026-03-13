@@ -1,92 +1,116 @@
-import { readFile, writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
-import type { Brief, BriefSubmission } from "./types";
+import { createClient } from "@supabase/supabase-js";
+import type { Brief } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const BRIEFS_FILE = path.join(DATA_DIR, "briefs.json");
+function getClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-async function ensureDir() {
-  if (!existsSync(DATA_DIR)) {
-    await mkdir(DATA_DIR, { recursive: true });
+  if (!url || !key) {
+    throw new Error("Supabase credentials not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
   }
-}
 
-async function readBriefs(): Promise<Brief[]> {
-  await ensureDir();
-  try {
-    const raw = await readFile(BRIEFS_FILE, "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-async function writeBriefs(briefs: Brief[]) {
-  await ensureDir();
-  await writeFile(BRIEFS_FILE, JSON.stringify(briefs, null, 2));
+  return createClient(url, key);
 }
 
 export async function getAllBriefs(): Promise<Brief[]> {
-  return readBriefs();
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from("briefs")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getAllBriefs error:", error);
+    return [];
+  }
+  return data || [];
 }
 
 export async function getBriefById(id: string): Promise<Brief | null> {
-  const briefs = await readBriefs();
-  return briefs.find((b) => b.id === id) || null;
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from("briefs")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error("getBriefById error:", error);
+    return null;
+  }
+  return data;
 }
 
 export async function getBriefByToken(token: string): Promise<Brief | null> {
-  const briefs = await readBriefs();
-  return briefs.find((b) => b.token === token) || null;
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from("briefs")
+    .select("*")
+    .eq("token", token)
+    .single();
+
+  if (error) {
+    console.error("getBriefByToken error:", error);
+    return null;
+  }
+  return data;
 }
 
 export async function createBrief(
-  data: Omit<Brief, "id" | "created_at" | "updated_at" | "status" | "submission">,
+  briefData: Omit<Brief, "id" | "created_at" | "updated_at" | "status" | "submission">
 ): Promise<Brief> {
-  const briefs = await readBriefs();
-  const now = new Date().toISOString();
-  const brief: Brief = {
-    ...data,
-    id: crypto.randomUUID(),
-    status: "pending",
-    created_at: now,
-    updated_at: now,
-  };
-  briefs.push(brief);
-  await writeBriefs(briefs);
-  return brief;
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from("briefs")
+    .insert({
+      token: briefData.token,
+      client_name: briefData.client_name,
+      client_email: briefData.client_email,
+      project_name: briefData.project_name,
+      status: "pending",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("createBrief error:", error);
+    throw new Error("Failed to create brief");
+  }
+  return data;
 }
 
 export async function updateBriefSubmission(
   id: string,
-  submission: Omit<BriefSubmission, "id" | "brief_id" | "submitted_at">,
+  submission: Record<string, unknown>
 ): Promise<Brief | null> {
-  const briefs = await readBriefs();
-  const index = briefs.findIndex((b) => b.id === id);
-  if (index === -1) return null;
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from("briefs")
+    .update({
+      status: "completed",
+      submission,
+    })
+    .eq("id", id)
+    .select()
+    .single();
 
-  const now = new Date().toISOString();
-  briefs[index] = {
-    ...briefs[index],
-    status: "completed",
-    updated_at: now,
-    submission: {
-      ...submission,
-      id: crypto.randomUUID(),
-      brief_id: id,
-      submitted_at: now,
-    } as BriefSubmission,
-  };
-
-  await writeBriefs(briefs);
-  return briefs[index];
+  if (error) {
+    console.error("updateBriefSubmission error:", error);
+    return null;
+  }
+  return data;
 }
 
 export async function deleteBrief(id: string): Promise<boolean> {
-  const briefs = await readBriefs();
-  const filtered = briefs.filter((b) => b.id !== id);
-  if (filtered.length === briefs.length) return false;
-  await writeBriefs(filtered);
+  const supabase = getClient();
+  const { error } = await supabase
+    .from("briefs")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("deleteBrief error:", error);
+    return false;
+  }
   return true;
 }
