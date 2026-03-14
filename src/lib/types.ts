@@ -4,12 +4,13 @@ export interface Brief {
   client_name: string;
   client_email: string;
   project_name: string;
-  status: "pending" | "in_progress" | "completed";
+  status: "pending" | "in_progress" | "completed" | "archived";
   current_step: WizardStep;
   created_at: string;
   updated_at: string;
   submission?: BriefSubmission;
   draft_submission?: Partial<BriefSubmission>;
+  internal_notes?: string;
 }
 
 export interface BriefSubmission {

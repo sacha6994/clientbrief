@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS briefs (
   client_name TEXT NOT NULL,
   client_email TEXT NOT NULL,
   project_name TEXT NOT NULL,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'archived')),
   current_step TEXT DEFAULT 'welcome',
   submission JSONB,
   draft_submission JSONB,
@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS briefs (
 DO $$ BEGIN
   ALTER TABLE briefs ADD COLUMN IF NOT EXISTS current_step TEXT DEFAULT 'welcome';
   ALTER TABLE briefs ADD COLUMN IF NOT EXISTS draft_submission JSONB;
+  ALTER TABLE briefs ADD COLUMN IF NOT EXISTS internal_notes TEXT DEFAULT '';
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 

@@ -172,6 +172,66 @@ export async function deleteBrief(id: string): Promise<boolean> {
   return true;
 }
 
+// ── Archive ─────────────────────────────────────
+
+export async function archiveBrief(id: string): Promise<boolean> {
+  const supabase = getClient();
+  const { error } = await supabase
+    .from("briefs")
+    .update({ status: "archived" })
+    .eq("id", id);
+
+  if (error) {
+    console.error("archiveBrief error:", error);
+    return false;
+  }
+  return true;
+}
+
+// ── Duplicate ───────────────────────────────────
+
+export async function duplicateBrief(id: string, newToken: string): Promise<Brief | null> {
+  const supabase = getClient();
+  const original = await getBriefById(id);
+  if (!original) return null;
+
+  const { data, error } = await supabase
+    .from("briefs")
+    .insert({
+      token: newToken,
+      client_name: original.client_name,
+      client_email: original.client_email,
+      project_name: `${original.project_name} (copie)`,
+      status: "pending",
+      current_step: "welcome",
+      internal_notes: original.internal_notes || "",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("duplicateBrief error:", error);
+    return null;
+  }
+  return data as Brief;
+}
+
+// ── Internal notes ──────────────────────────────
+
+export async function updateInternalNotes(id: string, notes: string): Promise<boolean> {
+  const supabase = getClient();
+  const { error } = await supabase
+    .from("briefs")
+    .update({ internal_notes: notes })
+    .eq("id", id);
+
+  if (error) {
+    console.error("updateInternalNotes error:", error);
+    return false;
+  }
+  return true;
+}
+
 // ── File upload ─────────────────────────────────
 
 export async function uploadFile(
