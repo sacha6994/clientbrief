@@ -1,181 +1,81 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, PenTool } from "lucide-react";
 import type { ContentData } from "@/lib/types";
 
-interface Props {
-  data: ContentData;
-  businessName: string;
-  activity: string;
-  onChange: (key: string, value: unknown) => void;
-  onMagicFill?: () => void;
-  magicFilling?: boolean;
-}
+interface Props { data: ContentData; businessName: string; activity: string; onChange: (key: string, value: unknown) => void; onMagicFill?: () => void; magicFilling?: boolean; }
 
 export function StepContent({ data, businessName, activity, onChange, onMagicFill, magicFilling }: Props) {
   const [generating, setGenerating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const generateText = async (field: string, prompt: string) => {
-    setGenerating(field);
-    setError(null);
+    setGenerating(field); setError(null);
     try {
-      const res = await fetch("/api/generate-text", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businessName,
-          activity,
-          field,
-          prompt,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "La génération a échoué. Réessayez.");
-        return;
-      }
+      const res = await fetch("/api/generate-text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ businessName, activity, field, prompt }) });
+      if (!res.ok) { const d = await res.json(); setError(d.error || "Échec. Réessayez."); return; }
       const result = await res.json();
-      if (result.text) {
-        onChange(field, result.text);
-      } else {
-        setError("Aucun texte généré. Réessayez.");
-      }
-    } catch {
-      setError("Erreur de connexion. Vérifiez votre réseau.");
-    } finally {
-      setGenerating(null);
-    }
+      if (result.text) onChange(field, result.text); else setError("Aucun texte généré.");
+    } catch { setError("Erreur réseau."); }
+    finally { setGenerating(null); }
   };
 
-  const AiButton = ({
-    field,
-    prompt,
-    label,
-  }: {
-    field: string;
-    prompt: string;
-    label: string;
-  }) => (
-    <button
-      onClick={() => generateText(field, prompt)}
-      disabled={generating === field || (!businessName && !activity)}
-      className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50 mt-1.5 transition-colors"
-    >
-      {generating === field ? (
-        <Loader2 className="w-3 h-3 animate-spin" />
-      ) : (
-        <Sparkles className="w-3 h-3" />
-      )}
-      {generating === field ? "Génération..." : label}
+  const AiBtn = ({ field, prompt }: { field: string; prompt: string }) => (
+    <button onClick={() => generateText(field, prompt)} disabled={generating === field || (!businessName && !activity)}
+      className="inline-flex items-center gap-1.5 text-[11px] font-medium mt-1.5 transition-all duration-200 cursor-pointer disabled:opacity-40"
+      style={{ color: "#8B5CF6" }}>
+      {generating === field ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+      {generating === field ? "Génération..." : "Générer avec l'IA"}
     </button>
   );
 
   return (
     <div>
-      <h2 className="text-2xl font-display font-bold mb-1">Contenus textes</h2>
-      <p className="text-surface-500 mb-2">
-        Les textes qui apparaîtront sur votre site. Pas d&apos;inspiration ?
-      </p>
+      <div className="flex items-center gap-3 mb-1">
+        <PenTool className="w-5 h-5 text-cyan" />
+        <h2 className="text-[18px] font-semibold text-txt-primary">Contenus textes</h2>
+      </div>
+      <p className="text-txt-secondary text-[13px] mb-2">Les textes de votre site. Pas d&apos;inspiration ?</p>
 
-      {/* Magic fill banner */}
-      <div className="flex items-center justify-between gap-3 mb-8 text-sm bg-gradient-to-r from-brand-50 to-indigo-50 rounded-xl px-4 py-3 border border-brand-100">
-        <div className="flex items-center gap-2 text-brand-700">
+      <div className="flex items-center justify-between gap-3 mb-8 text-[12px] rounded-xl px-4 py-3"
+        style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
+        <div className="flex items-center gap-2" style={{ color: "#8B5CF6" }}>
           <Sparkles className="w-4 h-4 shrink-0" />
-          <span>
-            Utilisez l&apos;IA pour générer chaque champ ou <strong>tous les textes d&apos;un coup</strong>
-          </span>
+          <span>IA disponible par champ ou <strong>tout d&apos;un coup</strong></span>
         </div>
         {onMagicFill && (
-          <button
-            onClick={onMagicFill}
-            disabled={magicFilling || (!businessName && !activity)}
-            className="btn-primary !py-1.5 !px-3 text-xs shrink-0"
-          >
-            {magicFilling ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
-            ) : (
-              <Sparkles className="w-3 h-3" />
-            )}
+          <button onClick={onMagicFill} disabled={magicFilling || (!businessName && !activity)}
+            className="btn-primary text-[11px] !py-1.5 !px-3 shrink-0 cursor-pointer"
+            style={{ background: "rgba(139,92,246,0.15)", borderColor: "rgba(139,92,246,0.35)", color: "#8B5CF6", boxShadow: "0 0 15px rgba(139,92,246,0.1)" }}>
+            {magicFilling ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
             Tout remplir
           </button>
         )}
       </div>
 
-      {error && (
-        <div className="mb-6 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+      {error && <div className="mb-6 px-4 py-3 rounded-xl text-[12px]" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#EF4444" }}>{error}</div>}
 
       <div className="space-y-6">
         <div>
           <label className="label-field">Titre principal (hero)</label>
-          <input
-            type="text"
-            className="input-field"
-            placeholder="Ex: Votre boulanger artisan au cœur de Rodez"
-            maxLength={500}
-            value={data.hero_title}
-            onChange={(e) => onChange("hero_title", e.target.value)}
-          />
-          <AiButton
-            field="hero_title"
-            prompt="Génère un titre accrocheur court pour la section hero d'un site vitrine"
-            label="Générer avec l'IA"
-          />
+          <input type="text" className="input-field" placeholder="Ex: Votre boulanger artisan au cœur de Rodez" maxLength={500} value={data.hero_title} onChange={(e) => onChange("hero_title", e.target.value)} />
+          <AiBtn field="hero_title" prompt="Génère un titre accrocheur court pour la section hero d'un site vitrine" />
         </div>
-
         <div>
           <label className="label-field">Sous-titre</label>
-          <input
-            type="text"
-            className="input-field"
-            placeholder="Ex: Du pain frais et des viennoiseries maison chaque matin"
-            maxLength={500}
-            value={data.hero_subtitle}
-            onChange={(e) => onChange("hero_subtitle", e.target.value)}
-          />
-          <AiButton
-            field="hero_subtitle"
-            prompt="Génère un sous-titre descriptif pour compléter le titre hero"
-            label="Générer avec l'IA"
-          />
+          <input type="text" className="input-field" placeholder="Ex: Du pain frais chaque matin" maxLength={500} value={data.hero_subtitle} onChange={(e) => onChange("hero_subtitle", e.target.value)} />
+          <AiBtn field="hero_subtitle" prompt="Génère un sous-titre descriptif pour compléter le titre hero" />
         </div>
-
         <div>
           <label className="label-field">Texte &quot;À propos&quot;</label>
-          <textarea
-            className="textarea-field"
-            placeholder="Présentez votre histoire, vos valeurs, votre équipe..."
-            maxLength={3000}
-            value={data.about_text}
-            onChange={(e) => onChange("about_text", e.target.value)}
-            rows={5}
-          />
-          <AiButton
-            field="about_text"
-            prompt="Génère un texte 'À propos' de 3-4 phrases, chaleureux et professionnel"
-            label="Générer avec l'IA"
-          />
+          <textarea className="textarea-field" placeholder="Présentez votre histoire, vos valeurs..." maxLength={3000} value={data.about_text} onChange={(e) => onChange("about_text", e.target.value)} rows={5} />
+          <AiBtn field="about_text" prompt="Génère un texte 'À propos' de 3-4 phrases, chaleureux et professionnel" />
         </div>
-
         <div>
-          <label className="label-field">Texte d&apos;appel à l&apos;action (CTA)</label>
-          <input
-            type="text"
-            className="input-field"
-            placeholder="Ex: Passez commande en ligne"
-            maxLength={255}
-            value={data.cta_text}
-            onChange={(e) => onChange("cta_text", e.target.value)}
-          />
-          <AiButton
-            field="cta_text"
-            prompt="Génère un court appel à l'action (CTA) engageant pour le bouton principal"
-            label="Générer avec l'IA"
-          />
+          <label className="label-field">Appel à l&apos;action (CTA)</label>
+          <input type="text" className="input-field" placeholder="Ex: Passez commande en ligne" maxLength={255} value={data.cta_text} onChange={(e) => onChange("cta_text", e.target.value)} />
+          <AiBtn field="cta_text" prompt="Génère un court appel à l'action engageant pour le bouton principal" />
         </div>
       </div>
     </div>
