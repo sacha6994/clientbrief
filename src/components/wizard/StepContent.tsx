@@ -9,9 +9,11 @@ interface Props {
   businessName: string;
   activity: string;
   onChange: (key: string, value: unknown) => void;
+  onMagicFill?: () => void;
+  magicFilling?: boolean;
 }
 
-export function StepContent({ data, businessName, activity, onChange }: Props) {
+export function StepContent({ data, businessName, activity, onChange, onMagicFill, magicFilling }: Props) {
   const [generating, setGenerating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +32,8 @@ export function StepContent({ data, businessName, activity, onChange }: Props) {
         }),
       });
       if (!res.ok) {
-        setError("La génération a échoué. Réessayez.");
+        const data = await res.json();
+        setError(data.error || "La génération a échoué. Réessayez.");
         return;
       }
       const result = await res.json();
@@ -71,16 +74,33 @@ export function StepContent({ data, businessName, activity, onChange }: Props) {
 
   return (
     <div>
-      <h2 className="text-2xl font-display font-bold mb-1">✍️ Contenus textes</h2>
+      <h2 className="text-2xl font-display font-bold mb-1">Contenus textes</h2>
       <p className="text-surface-500 mb-2">
         Les textes qui apparaîtront sur votre site. Pas d&apos;inspiration ?
       </p>
-      <div className="flex items-center gap-2 mb-8 text-sm text-brand-600 bg-brand-50 rounded-lg px-4 py-2.5 border border-brand-100">
-        <Sparkles className="w-4 h-4 shrink-0" />
-        <span>
-          Cliquez sur <strong>&quot;Générer avec l&apos;IA&quot;</strong> pour que l&apos;IA rédige un texte
-          à partir de vos infos entreprise.
-        </span>
+
+      {/* Magic fill banner */}
+      <div className="flex items-center justify-between gap-3 mb-8 text-sm bg-gradient-to-r from-brand-50 to-indigo-50 rounded-xl px-4 py-3 border border-brand-100">
+        <div className="flex items-center gap-2 text-brand-700">
+          <Sparkles className="w-4 h-4 shrink-0" />
+          <span>
+            Utilisez l&apos;IA pour générer chaque champ ou <strong>tous les textes d&apos;un coup</strong>
+          </span>
+        </div>
+        {onMagicFill && (
+          <button
+            onClick={onMagicFill}
+            disabled={magicFilling || (!businessName && !activity)}
+            className="btn-primary !py-1.5 !px-3 text-xs shrink-0"
+          >
+            {magicFilling ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Sparkles className="w-3 h-3" />
+            )}
+            Tout remplir
+          </button>
+        )}
       </div>
 
       {error && (
@@ -96,6 +116,7 @@ export function StepContent({ data, businessName, activity, onChange }: Props) {
             type="text"
             className="input-field"
             placeholder="Ex: Votre boulanger artisan au cœur de Rodez"
+            maxLength={500}
             value={data.hero_title}
             onChange={(e) => onChange("hero_title", e.target.value)}
           />
@@ -112,6 +133,7 @@ export function StepContent({ data, businessName, activity, onChange }: Props) {
             type="text"
             className="input-field"
             placeholder="Ex: Du pain frais et des viennoiseries maison chaque matin"
+            maxLength={500}
             value={data.hero_subtitle}
             onChange={(e) => onChange("hero_subtitle", e.target.value)}
           />
@@ -127,6 +149,7 @@ export function StepContent({ data, businessName, activity, onChange }: Props) {
           <textarea
             className="textarea-field"
             placeholder="Présentez votre histoire, vos valeurs, votre équipe..."
+            maxLength={3000}
             value={data.about_text}
             onChange={(e) => onChange("about_text", e.target.value)}
             rows={5}
@@ -144,6 +167,7 @@ export function StepContent({ data, businessName, activity, onChange }: Props) {
             type="text"
             className="input-field"
             placeholder="Ex: Passez commande en ligne"
+            maxLength={255}
             value={data.cta_text}
             onChange={(e) => onChange("cta_text", e.target.value)}
           />

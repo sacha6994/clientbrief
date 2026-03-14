@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBriefById, updateBriefSubmission, deleteBrief } from "@/lib/storage";
+import { BriefSubmissionSchema } from "@/lib/validation";
 
 export async function GET(
   _request: NextRequest,
@@ -27,7 +28,16 @@ export async function PUT(
       );
     }
 
-    const brief = await updateBriefSubmission(params.id, submission);
+    // Validate submission structure
+    const parsed = BriefSubmissionSchema.safeParse(submission);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Données invalides", details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    const brief = await updateBriefSubmission(params.id, parsed.data);
     if (!brief) {
       return NextResponse.json({ error: "Brief not found" }, { status: 404 });
     }

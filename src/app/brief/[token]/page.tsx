@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import {
   ArrowRight,
@@ -8,6 +8,8 @@ import {
   ClipboardList,
   Loader2,
   CheckCircle2,
+  Sparkles,
+  Save,
 } from "lucide-react";
 import { WIZARD_STEPS } from "@/lib/types";
 import type { WizardStep } from "@/lib/types";
@@ -82,6 +84,11 @@ export default function BriefWizardPage() {
   const [formData, setFormData] = useState<FormData>(defaultFormData);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [magicFilling, setMagicFilling] = useState(false);
+
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadBrief = useCallback(async () => {
     try {
@@ -95,6 +102,17 @@ export default function BriefWizardPage() {
         setBriefInfo(data.brief);
         if (data.brief.status === "completed") {
           setSubmitted(true);
+        } else {
+          // Restore draft if exists
+          if (data.brief.draft_submission) {
+            setFormData((prev) => ({
+              ...prev,
+              ...data.brief.draft_submission,
+            }));
+          }
+          if (data.brief.current_step && data.brief.current_step !== "welcome") {
+            setCurrentStep(data.brief.current_step);
+          }
         }
       } else {
         setNotFound(true);
@@ -110,11 +128,56 @@ export default function BriefWizardPage() {
     loadBrief();
   }, [loadBrief]);
 
+  // ── Auto-save ─────────────────────────────────
+  const autoSave = useCallback(
+    async (data: FormData, step: WizardStep) => {
+      if (!briefInfo?.id || step === "welcome") return;
+      setSaving(true);
+      try {
+        await fetch(`/api/briefs/${briefInfo.id}/autosave`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            draft_submission: data,
+            current_step: step,
+          }),
+        });
+        setLastSaved(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
+      } catch {
+        // Silent fail for auto-save
+      } finally {
+        setSaving(false);
+      }
+    },
+    [briefInfo?.id]
+  );
+
+  // Debounced auto-save on form change
+  useEffect(() => {
+    if (!briefInfo?.id || currentStep === "welcome") return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      autoSave(formData, currentStep);
+    }, 2000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formData, currentStep, autoSave, briefInfo?.id]);
+
   const stepIndex = WIZARD_STEPS.findIndex((s) => s.key === currentStep);
 
   const goNext = () => {
     if (stepIndex < WIZARD_STEPS.length - 1) {
-      setCurrentStep(WIZARD_STEPS[stepIndex + 1].key);
+      const nextStep = WIZARD_STEPS[stepIndex + 1].key;
+      setCurrentStep(nextStep);
+      autoSave(formData, nextStep);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -136,6 +199,59 @@ export default function BriefWizardPage() {
     }));
   };
 
+  // ── Magic Fill ────────────────────────────────
+  const handleMagicFill = async () => {
+    if (!formData.business_info.business_name && !formData.business_info.activity_description) {
+      alert("Remplissez d'abord le nom de l'entreprise et la description de l'activité (étape Entreprise).");
+      return;
+    }
+
+    setMagicFilling(true);
+    try {
+      const res = await fetch("/api/magic-fill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: formData.business_info.business_name,
+          activity: formData.business_info.activity_description,
+          tagline: formData.business_info.tagline,
+          audience: formData.business_info.target_audience,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed");
+
+      const { generated } = await res.json();
+
+      setFormData((prev) => ({
+        ...prev,
+        business_info: {
+          ...prev.business_info,
+          tagline: prev.business_info.tagline || generated.tagline || prev.business_info.tagline,
+        },
+        content: {
+          ...prev.content,
+          hero_title: prev.content.hero_title || generated.hero_title || "",
+          hero_subtitle: prev.content.hero_subtitle || generated.hero_subtitle || "",
+          about_text: prev.content.about_text || generated.about_text || "",
+          cta_text: prev.content.cta_text || generated.cta_text || "",
+          services: prev.content.services[0]?.title
+            ? prev.content.services
+            : generated.services?.map((s: { title: string; description: string }, i: number) => ({
+                id: String(i + 1),
+                title: s.title,
+                description: s.description,
+                price: "",
+              })) || prev.content.services,
+        },
+      }));
+    } catch {
+      alert("La génération IA a échoué. Réessayez.");
+    } finally {
+      setMagicFilling(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
@@ -146,6 +262,9 @@ export default function BriefWizardPage() {
       });
       if (res.ok) {
         setSubmitted(true);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Erreur lors de l'envoi. Veuillez réessayer.");
       }
     } catch {
       alert("Erreur lors de l'envoi. Veuillez réessayer.");
@@ -184,9 +303,7 @@ export default function BriefWizardPage() {
           <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="w-10 h-10 text-emerald-600" />
           </div>
-          <h1 className="text-3xl font-display font-bold mb-3">
-            Merci ! 🎉
-          </h1>
+          <h1 className="text-3xl font-display font-bold mb-3">Merci !</h1>
           <p className="text-surface-500 text-lg">
             Votre brief a bien été envoyé. Nous reviendrons vers vous très
             rapidement avec une proposition.
@@ -209,9 +326,22 @@ export default function BriefWizardPage() {
               {briefInfo?.project_name}
             </span>
           </div>
-          <span className="text-xs text-surface-400 font-mono">
-            {stepIndex + 1} / {WIZARD_STEPS.length}
-          </span>
+          <div className="flex items-center gap-3">
+            {/* Auto-save indicator */}
+            {lastSaved && (
+              <span className="text-xs text-surface-400 flex items-center gap-1">
+                {saving ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Save className="w-3 h-3" />
+                )}
+                {saving ? "Sauvegarde..." : `Sauvé à ${lastSaved}`}
+              </span>
+            )}
+            <span className="text-xs text-surface-400 font-mono">
+              {stepIndex + 1} / {WIZARD_STEPS.length}
+            </span>
+          </div>
         </div>
 
         {/* Progress bar */}
@@ -261,9 +391,31 @@ export default function BriefWizardPage() {
                 Ce formulaire va nous permettre de collecter tout le contenu
                 nécessaire pour créer votre site web.
               </p>
-              <p className="text-surface-400 text-sm">
-                Comptez environ 10 minutes. Vous pouvez revenir dessus plus tard.
+              <p className="text-surface-400 text-sm mb-6">
+                Comptez environ 10 minutes. Vos réponses sont sauvegardées automatiquement.
               </p>
+
+              {/* Magic Fill button */}
+              <div className="mt-6 p-5 rounded-2xl bg-gradient-to-r from-brand-50 to-indigo-50 border border-brand-200 max-w-md mx-auto">
+                <p className="text-sm text-surface-600 mb-3">
+                  Pas le temps ? L&apos;IA peut pré-remplir tous vos textes automatiquement.
+                </p>
+                <p className="text-xs text-surface-400 mb-4">
+                  Remplissez d&apos;abord l&apos;étape &quot;Entreprise&quot;, puis revenez cliquer ici.
+                </p>
+                <button
+                  onClick={handleMagicFill}
+                  disabled={magicFilling}
+                  className="btn-primary !bg-gradient-to-r !from-brand-600 !to-indigo-600 text-sm"
+                >
+                  {magicFilling ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  {magicFilling ? "Génération en cours..." : "Remplir avec l'IA"}
+                </button>
+              </div>
             </div>
           )}
 
@@ -287,6 +439,8 @@ export default function BriefWizardPage() {
               businessName={formData.business_info.business_name}
               activity={formData.business_info.activity_description}
               onChange={(key, val) => updateField("content", key, val)}
+              onMagicFill={handleMagicFill}
+              magicFilling={magicFilling}
             />
           )}
 
@@ -300,6 +454,7 @@ export default function BriefWizardPage() {
           {currentStep === "photos" && (
             <StepPhotos
               data={formData.photos}
+              briefId={briefInfo?.id || ""}
               onChange={(key, val) => updateField("photos", key, val)}
             />
           )}

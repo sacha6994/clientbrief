@@ -16,14 +16,23 @@ export function CreateBriefModal({ onClose, onCreated }: Props) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   const handleSubmit = async () => {
     if (!form.client_name || !form.client_email || !form.project_name) {
       setError("Tous les champs sont requis");
       return;
     }
+
+    // Basic email validation on client side
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.client_email)) {
+      setFieldErrors({ client_email: ["Email invalide"] });
+      return;
+    }
+
     setLoading(true);
     setError("");
+    setFieldErrors({});
 
     try {
       const res = await fetch("/api/briefs", {
@@ -31,7 +40,16 @@ export function CreateBriefModal({ onClose, onCreated }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error("Failed");
+
+      if (!res.ok) {
+        const data = await res.json();
+        if (data.details) {
+          setFieldErrors(data.details);
+        }
+        setError(data.error || "Erreur lors de la création");
+        return;
+      }
+
       onCreated();
     } catch {
       setError("Erreur lors de la création du brief");
@@ -61,31 +79,43 @@ export function CreateBriefModal({ onClose, onCreated }: Props) {
             <label className="label-field">Nom du client</label>
             <input
               type="text"
-              className="input-field"
+              className={`input-field ${fieldErrors.client_name ? "!border-red-400" : ""}`}
               placeholder="Jean Dupont"
+              maxLength={255}
               value={form.client_name}
               onChange={(e) => setForm({ ...form, client_name: e.target.value })}
             />
+            {fieldErrors.client_name && (
+              <p className="text-xs text-red-500 mt-1">{fieldErrors.client_name[0]}</p>
+            )}
           </div>
           <div>
             <label className="label-field">Email du client</label>
             <input
               type="email"
-              className="input-field"
+              className={`input-field ${fieldErrors.client_email ? "!border-red-400" : ""}`}
               placeholder="jean@entreprise.fr"
+              maxLength={255}
               value={form.client_email}
               onChange={(e) => setForm({ ...form, client_email: e.target.value })}
             />
+            {fieldErrors.client_email && (
+              <p className="text-xs text-red-500 mt-1">{fieldErrors.client_email[0]}</p>
+            )}
           </div>
           <div>
             <label className="label-field">Nom du projet</label>
             <input
               type="text"
-              className="input-field"
+              className={`input-field ${fieldErrors.project_name ? "!border-red-400" : ""}`}
               placeholder="Site vitrine Boulangerie Martin"
+              maxLength={255}
               value={form.project_name}
               onChange={(e) => setForm({ ...form, project_name: e.target.value })}
             />
+            {fieldErrors.project_name && (
+              <p className="text-xs text-red-500 mt-1">{fieldErrors.project_name[0]}</p>
+            )}
           </div>
         </div>
 

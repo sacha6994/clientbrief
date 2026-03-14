@@ -10,6 +10,7 @@ interface Props {
 
 export function StepServices({ data, onChange }: Props) {
   const addService = () => {
+    if (data.services.length >= 20) return;
     const newId = String(data.services.length + 1);
     onChange("services", [
       ...data.services,
@@ -32,6 +33,7 @@ export function StepServices({ data, onChange }: Props) {
   };
 
   const addTestimonial = () => {
+    if (data.testimonials.length >= 20) return;
     const newId = String(data.testimonials.length + 1);
     onChange("testimonials", [
       ...data.testimonials,
@@ -55,7 +57,7 @@ export function StepServices({ data, onChange }: Props) {
 
   return (
     <div>
-      <h2 className="text-2xl font-display font-bold mb-1">⚡ Services &amp; Avis</h2>
+      <h2 className="text-2xl font-display font-bold mb-1">Services &amp; Avis</h2>
       <p className="text-surface-500 mb-8">
         Listez vos services/prestations et ajoutez des témoignages clients.
       </p>
@@ -84,6 +86,7 @@ export function StepServices({ data, onChange }: Props) {
                     type="text"
                     className="input-field"
                     placeholder="Ex: Coupe homme"
+                    maxLength={255}
                     value={service.title}
                     onChange={(e) => updateService(i, "title", e.target.value)}
                   />
@@ -94,6 +97,7 @@ export function StepServices({ data, onChange }: Props) {
                     type="text"
                     className="input-field"
                     placeholder="Ex: 25€"
+                    maxLength={50}
                     value={service.price || ""}
                     onChange={(e) => updateService(i, "price", e.target.value)}
                   />
@@ -104,6 +108,7 @@ export function StepServices({ data, onChange }: Props) {
                 <textarea
                   className="textarea-field !min-h-[70px]"
                   placeholder="Décrivez brièvement ce service..."
+                  maxLength={1000}
                   value={service.description}
                   onChange={(e) =>
                     updateService(i, "description", e.target.value)
@@ -114,10 +119,12 @@ export function StepServices({ data, onChange }: Props) {
             </div>
           ))}
         </div>
-        <button onClick={addService} className="btn-secondary mt-4">
-          <Plus className="w-4 h-4" />
-          Ajouter un service
-        </button>
+        {data.services.length < 20 && (
+          <button onClick={addService} className="btn-secondary mt-4">
+            <Plus className="w-4 h-4" />
+            Ajouter un service
+          </button>
+        )}
       </div>
 
       {/* Testimonials */}
@@ -149,6 +156,7 @@ export function StepServices({ data, onChange }: Props) {
                     type="text"
                     className="input-field"
                     placeholder="Ex: Marie D."
+                    maxLength={255}
                     value={t.author}
                     onChange={(e) =>
                       updateTestimonial(i, "author", e.target.value)
@@ -177,6 +185,7 @@ export function StepServices({ data, onChange }: Props) {
                 <textarea
                   className="textarea-field !min-h-[70px]"
                   placeholder="Ce que le client a dit..."
+                  maxLength={1000}
                   value={t.text}
                   onChange={(e) =>
                     updateTestimonial(i, "text", e.target.value)
@@ -187,10 +196,12 @@ export function StepServices({ data, onChange }: Props) {
             </div>
           ))}
         </div>
-        <button onClick={addTestimonial} className="btn-secondary mt-4">
-          <Plus className="w-4 h-4" />
-          Ajouter un témoignage
-        </button>
+        {data.testimonials.length < 20 && (
+          <button onClick={addTestimonial} className="btn-secondary mt-4">
+            <Plus className="w-4 h-4" />
+            Ajouter un témoignage
+          </button>
+        )}
       </div>
     </div>
   );
