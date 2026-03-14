@@ -5,34 +5,28 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        base: "#04080F",
-        cyan: {
-          DEFAULT: "#06B6D4",
-          dim: "rgba(6, 182, 212, 0.15)",
-          border: "rgba(6, 182, 212, 0.18)",
-          glow: "rgba(6, 182, 212, 0.25)",
-          strong: "rgba(6, 182, 212, 0.35)",
+        ice: {
+          50: "#F0F7FF",
+          100: "#E0EFFF",
+          200: "#B9DBFE",
+          300: "#7CC2FE",
+          400: "#60A5FA",
+          500: "#3B82F6",
+          600: "#2563EB",
+          700: "#1D4ED8",
         },
-        violet: {
-          DEFAULT: "#8B5CF6",
-          dim: "rgba(139, 92, 246, 0.12)",
-        },
-        neon: {
-          green: "#10B981",
-          amber: "#F59E0B",
-          red: "#EF4444",
-        },
-        glass: {
-          DEFAULT: "rgba(255, 255, 255, 0.04)",
-          md: "rgba(255, 255, 255, 0.07)",
-          hover: "rgba(255, 255, 255, 0.08)",
-          border: "rgba(255, 255, 255, 0.06)",
+        frost: {
+          DEFAULT: "rgba(255, 255, 255, 0.62)",
+          light: "rgba(255, 255, 255, 0.75)",
+          heavy: "rgba(255, 255, 255, 0.85)",
+          border: "rgba(255, 255, 255, 0.45)",
+          subtle: "rgba(255, 255, 255, 0.35)",
         },
         txt: {
-          primary: "#E2E8F0",
-          secondary: "#94A3B8",
-          muted: "#475569",
-          ghost: "#334155",
+          primary: "#0F172A",
+          secondary: "#475569",
+          muted: "#94A3B8",
+          ghost: "#CBD5E1",
         },
       },
       fontFamily: {
@@ -42,21 +36,10 @@ const config: Config = {
       animation: {
         "fade-in": "fadeIn 0.5s ease-out forwards",
         "slide-up": "slideUp 0.5s ease-out forwards",
-        "glow-pulse": "glowPulse 3s ease-in-out infinite",
       },
       keyframes: {
-        fadeIn: {
-          from: { opacity: "0" },
-          to: { opacity: "1" },
-        },
-        slideUp: {
-          from: { opacity: "0", transform: "translateY(20px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        glowPulse: {
-          "0%, 100%": { opacity: "0.5" },
-          "50%": { opacity: "1" },
-        },
+        fadeIn: { from: { opacity: "0" }, to: { opacity: "1" } },
+        slideUp: { from: { opacity: "0", transform: "translateY(20px)" }, to: { opacity: "1", transform: "translateY(0)" } },
       },
     },
   },
