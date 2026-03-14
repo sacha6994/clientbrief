@@ -1,4 +1,4 @@
--- ClientBrief — Supabase Migration
+-- ClientBrief — Supabase Migration (idempotent)
 -- Exécuter dans le SQL Editor de Supabase
 
 CREATE TABLE IF NOT EXISTS briefs (
@@ -14,12 +14,13 @@ CREATE TABLE IF NOT EXISTS briefs (
 );
 
 -- Index pour les lookups par token (wizard client)
-CREATE INDEX idx_briefs_token ON briefs(token);
+CREATE INDEX IF NOT EXISTS idx_briefs_token ON briefs(token);
 
 -- RLS policies
 ALTER TABLE briefs ENABLE ROW LEVEL SECURITY;
 
--- Policy : accès complet pour les utilisateurs authentifiés (dashboard admin)
+-- Policy : accès complet (drop + recreate pour idempotence)
+DROP POLICY IF EXISTS "Admin full access" ON briefs;
 CREATE POLICY "Admin full access" ON briefs
   FOR ALL
   USING (true)
@@ -34,6 +35,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS briefs_updated_at ON briefs;
 CREATE TRIGGER briefs_updated_at
   BEFORE UPDATE ON briefs
   FOR EACH ROW
