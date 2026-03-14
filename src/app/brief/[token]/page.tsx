@@ -2,23 +2,27 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
-import { ArrowRight, ArrowLeft, ClipboardList, Loader2, CheckCircle2, Sparkles, Save, Hand, Building2, Palette, PenTool, Zap, Camera, Link2, ListChecks } from "lucide-react";
+import { ArrowRight, ArrowLeft, ClipboardList, Loader2, CheckCircle2, Sparkles, Save, Hand, Building2, Palette, PenTool, Zap, Camera, Link2, ListChecks, Layout, Search } from "lucide-react";
 import { WIZARD_STEPS } from "@/lib/types";
 import type { WizardStep } from "@/lib/types";
 import { StepBusiness } from "@/components/wizard/StepBusiness";
 import { StepIdentity } from "@/components/wizard/StepIdentity";
 import { StepContent } from "@/components/wizard/StepContent";
 import { StepServices } from "@/components/wizard/StepServices";
+import { StepProject } from "@/components/wizard/StepProject";
+import { StepSeo } from "@/components/wizard/StepSeo";
 import { StepPhotos } from "@/components/wizard/StepPhotos";
 import { StepSocial } from "@/components/wizard/StepSocial";
 import { StepReview } from "@/components/wizard/StepReview";
 
-const stepIcons: Record<string, typeof Hand> = { welcome: Hand, business: Building2, identity: Palette, content: PenTool, services: Zap, photos: Camera, social: Link2, review: ListChecks };
+const stepIcons: Record<string, typeof Hand> = { welcome: Hand, business: Building2, identity: Palette, content: PenTool, services: Zap, project: Layout, seo: Search, photos: Camera, social: Link2, review: ListChecks };
 
 const defaultFormData = {
   business_info: { business_name: "", tagline: "", activity_description: "", target_audience: "", unique_selling_point: "", address: "", phone: "", email: "", opening_hours: "" },
   visual_identity: { has_logo: false, logo_url: "", primary_color: "#60A5FA", secondary_color: "#3B82F6", accent_color: "#10B981", style_preference: "modern" as const, reference_websites: [""] },
   content: { hero_title: "", hero_subtitle: "", about_text: "", services: [{ id: "1", title: "", description: "", price: "" }], testimonials: [{ id: "1", author: "", text: "", rating: 5 }], cta_text: "" },
+  project_scope: { page_count: "", pages_wanted: [] as string[], features: [] as string[], has_domain: false, domain_name: "", deadline: "", budget: "", languages: ["Français"], tone: "" as const, competitors: [""] },
+  seo_legal: { keywords: "", meta_description: "", siret: "", legal_name: "", legal_status: "", privacy_contact: "" },
   social_links: { facebook: "", instagram: "", tiktok: "", linkedin: "", google_maps: "", website_current: "" },
   photos: { logo_files: [] as string[], hero_photos: [] as string[], gallery_photos: [] as string[], team_photos: [] as string[] },
   additional_notes: "",
@@ -123,6 +127,8 @@ export default function BriefWizardPage() {
           {currentStep === "identity" && <StepIdentity data={formData.visual_identity} onChange={(k, v) => updateField("visual_identity", k, v)} />}
           {currentStep === "content" && <StepContent data={formData.content} businessName={formData.business_info.business_name} activity={formData.business_info.activity_description} onChange={(k, v) => updateField("content", k, v)} onMagicFill={handleMagicFill} magicFilling={magicFilling} />}
           {currentStep === "services" && <StepServices data={formData.content} onChange={(k, v) => updateField("content", k, v)} />}
+          {currentStep === "project" && <StepProject data={formData.project_scope} onChange={(k, v) => updateField("project_scope", k, v)} />}
+          {currentStep === "seo" && <StepSeo data={formData.seo_legal} businessName={formData.business_info.business_name} activity={formData.business_info.activity_description} onChange={(k, v) => updateField("seo_legal", k, v)} />}
           {currentStep === "photos" && <StepPhotos data={formData.photos} briefId={briefInfo?.id || ""} onChange={(k, v) => updateField("photos", k, v)} />}
           {currentStep === "social" && <StepSocial data={formData.social_links} onChange={(k, v) => updateField("social_links", k, v)} />}
           {currentStep === "review" && <StepReview formData={formData} onNotesChange={n => setFormData(p => ({ ...p, additional_notes: n }))} />}

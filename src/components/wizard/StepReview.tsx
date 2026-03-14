@@ -1,6 +1,6 @@
 "use client";
 
-import { ListChecks, Building2, Palette, PenTool, Zap, Camera, Link2 } from "lucide-react";
+import { ListChecks, Building2, Palette, PenTool, Zap, Camera, Link2, Layout, Search } from "lucide-react";
 import type { FormData } from "@/app/brief/[token]/page";
 import { computeCompletenessScore } from "@/lib/types";
 
@@ -61,6 +61,34 @@ export function StepReview({ formData, onNotesChange }: Props) {
             <div key={s.label} className={`p-4 rounded-xl text-center border ${s.color}`}><s.icon className="w-4 h-4 mx-auto mb-1" /><span className="text-[18px] font-bold block">{s.value}</span><span className="text-[10px] opacity-70">{s.label}</span></div>
           ))}
         </div>
+
+        {/* Project scope */}
+        {formData.project_scope && (
+          <div className="p-5 rounded-xl glass-card">
+            <h3 className="flex items-center gap-2 text-[12px] font-semibold text-txt-muted uppercase tracking-wide mb-3"><Layout className="w-3.5 h-3.5" /> Projet</h3>
+            <div className="space-y-1.5 text-[12px]">
+              <div><span className="text-txt-muted">Pages :</span> <span className="text-txt-secondary">{(formData.project_scope.pages_wanted || []).length > 0 ? (formData.project_scope.pages_wanted || []).join(", ") : "—"}</span></div>
+              <div><span className="text-txt-muted">Fonctionnalités :</span> <span className="text-txt-secondary">{(formData.project_scope.features || []).length > 0 ? `${(formData.project_scope.features || []).length} sélectionnée(s)` : "—"}</span></div>
+              <div><span className="text-txt-muted">Deadline :</span> <span className="text-txt-secondary">{formData.project_scope.deadline || "—"}</span></div>
+              <div><span className="text-txt-muted">Budget :</span> <span className="text-txt-secondary">{formData.project_scope.budget || "—"}</span></div>
+              <div><span className="text-txt-muted">Ton :</span> <span className="text-txt-secondary capitalize">{formData.project_scope.tone || "—"}</span></div>
+              <div><span className="text-txt-muted">Domaine :</span> <span className="text-txt-secondary">{formData.project_scope.has_domain ? (formData.project_scope.domain_name || "Oui") : "À acheter"}</span></div>
+            </div>
+          </div>
+        )}
+
+        {/* SEO & Legal */}
+        {formData.seo_legal && (
+          <div className="p-5 rounded-xl glass-card">
+            <h3 className="flex items-center gap-2 text-[12px] font-semibold text-txt-muted uppercase tracking-wide mb-3"><Search className="w-3.5 h-3.5" /> SEO &amp; Légal</h3>
+            <div className="space-y-1.5 text-[12px]">
+              <div><span className="text-txt-muted">Mots-clés :</span> <span className="text-txt-secondary">{formData.seo_legal.keywords ? "Rempli" : "—"}</span></div>
+              <div><span className="text-txt-muted">Meta desc :</span> <span className="text-txt-secondary">{formData.seo_legal.meta_description ? "Rempli" : "—"}</span></div>
+              <div><span className="text-txt-muted">SIRET :</span> <span className="text-txt-secondary">{formData.seo_legal.siret || "—"}</span></div>
+              <div><span className="text-txt-muted">Statut :</span> <span className="text-txt-secondary">{formData.seo_legal.legal_status || "—"}</span></div>
+            </div>
+          </div>
+        )}
 
         <div className="p-4 rounded-xl glass-card text-[12px]"><Link2 className="w-3.5 h-3.5 inline mr-1.5 text-txt-muted" />{filledSocials} réseau{filledSocials > 1 ? "x" : ""} renseigné{filledSocials > 1 ? "s" : ""}</div>
 

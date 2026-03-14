@@ -73,11 +73,37 @@ export const PhotoDataSchema = z.object({
   team_photos: z.array(z.string().max(2000)).max(10).default([]),
 });
 
+// ── Project scope ───────────────────────────────
+export const ProjectScopeSchema = z.object({
+  page_count: z.string().max(10).default(""),
+  pages_wanted: z.array(z.string().max(100)).max(20).default([]),
+  features: z.array(z.string().max(200)).max(20).default([]),
+  has_domain: z.boolean().default(false),
+  domain_name: z.string().max(255).default(""),
+  deadline: z.string().max(20).default(""),
+  budget: z.string().max(50).default(""),
+  languages: z.array(z.string().max(50)).max(10).default(["Français"]),
+  tone: z.enum(["formal", "friendly", "casual", ""]).default(""),
+  competitors: z.array(z.string().max(500)).max(5).default([""]),
+});
+
+// ── SEO & Legal ─────────────────────────────────
+export const SeoLegalSchema = z.object({
+  keywords: z.string().max(500).default(""),
+  meta_description: z.string().max(160).default(""),
+  siret: z.string().max(20).default(""),
+  legal_name: z.string().max(255).default(""),
+  legal_status: z.string().max(50).default(""),
+  privacy_contact: z.string().max(255).default(""),
+});
+
 // ── Full submission ─────────────────────────────
 export const BriefSubmissionSchema = z.object({
   business_info: BusinessInfoSchema,
   visual_identity: VisualIdentitySchema,
   content: ContentDataSchema,
+  project_scope: ProjectScopeSchema.optional(),
+  seo_legal: SeoLegalSchema.optional(),
   social_links: SocialLinksSchema,
   photos: PhotoDataSchema,
   additional_notes: z.string().max(3000).default(""),
