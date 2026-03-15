@@ -17,30 +17,22 @@ export function CreateBriefModal({ onClose, onCreated }: Props) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.client_email)) { setFieldErrors({ client_email: ["Email invalide"] }); return; }
     setLoading(true); setError(""); setFieldErrors({});
     try {
-      const res = await fetch("/api/briefs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, send_email: sendEmail }),
-      });
+      const res = await fetch("/api/briefs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, send_email: sendEmail }) });
       if (!res.ok) { const d = await res.json(); if (d.details) setFieldErrors(d.details); setError(d.error || "Erreur"); return; }
       const data = await res.json();
-      if (sendEmail && data.emailSent) {
-        alert(`Brief créé ! Un email a été envoyé à ${form.client_email}`);
-      } else if (sendEmail && !data.emailSent) {
-        alert("Brief créé ! L'email n'a pas pu être envoyé (vérifiez la config Resend). Le lien est copiable depuis le dashboard.");
-      }
+      if (sendEmail && data.emailSent) alert(`Brief créé ! Email envoyé à ${form.client_email}`);
+      else if (sendEmail && !data.emailSent) alert("Brief créé ! Email non envoyé (vérifiez Resend). Lien copiable depuis le dashboard.");
       onCreated();
-    } catch { setError("Erreur de création"); }
-    finally { setLoading(false); }
+    } catch { setError("Erreur"); } finally { setLoading(false); }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-ice-900/20 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md p-8 animate-slide-up glass-card-glow" style={{ borderRadius: 20 }}>
+      <div className="relative w-full sm:max-w-md p-6 sm:p-8 animate-slide-up glass-card-glow rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-lg hover:bg-ice-100/50 text-txt-muted cursor-pointer"><X className="w-5 h-5" /></button>
-        <h2 className="text-[18px] font-semibold mb-1">Nouveau brief</h2>
-        <p className="text-txt-muted text-[12px] mb-6">Un lien unique sera généré pour votre client.</p>
+        <h2 className="text-[16px] sm:text-[18px] font-semibold mb-1">Nouveau brief</h2>
+        <p className="text-txt-muted text-[11px] sm:text-[12px] mb-5 sm:mb-6">Un lien unique sera généré.</p>
         <div className="space-y-4">
           <div>
             <label className="label-field">Nom du client</label>
@@ -56,19 +48,16 @@ export function CreateBriefModal({ onClose, onCreated }: Props) {
             <label className="label-field">Nom du projet</label>
             <input type="text" className="input-field" placeholder="Site vitrine Boulangerie Martin" maxLength={255} value={form.project_name} onChange={e => setForm({ ...form, project_name: e.target.value })} />
           </div>
-
-          {/* Email toggle */}
           <div className="flex items-center justify-between p-3 rounded-xl glass-card">
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-ice-500" />
-              <div>
-                <p className="text-[12px] font-medium">Envoyer le lien par email</p>
-                <p className="text-[11px] text-txt-muted">Le client recevra un email avec le lien du brief</p>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Mail className="w-4 h-4 text-ice-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[12px] font-medium truncate">Envoyer par email</p>
+                <p className="text-[10px] sm:text-[11px] text-txt-muted">Le client recevra le lien</p>
               </div>
             </div>
-            <button onClick={() => setSendEmail(!sendEmail)}
-              className={`w-10 h-6 rounded-full transition-all cursor-pointer ${sendEmail ? "bg-ice-500" : "bg-gray-200"}`}>
-              <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform mx-1 ${sendEmail ? "translate-x-4" : "translate-x-0"}`} />
+            <button onClick={() => setSendEmail(!sendEmail)} className={`w-12 h-7 rounded-full transition-all cursor-pointer shrink-0 ml-3 ${sendEmail ? "bg-ice-500" : "bg-gray-200"}`}>
+              <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform mx-1 ${sendEmail ? "translate-x-5" : "translate-x-0"}`} />
             </button>
           </div>
         </div>
@@ -77,7 +66,8 @@ export function CreateBriefModal({ onClose, onCreated }: Props) {
           <button onClick={onClose} className="btn-secondary flex-1">Annuler</button>
           <button onClick={handleSubmit} disabled={loading} className="btn-primary flex-1">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            {loading ? "Création..." : sendEmail ? "Créer & envoyer" : "Créer le brief"}
+            <span className="hidden sm:inline">{sendEmail ? "Créer & envoyer" : "Créer"}</span>
+            <span className="sm:hidden">Créer</span>
           </button>
         </div>
       </div>

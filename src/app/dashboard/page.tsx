@@ -24,119 +24,21 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const loadBriefs = useCallback(async () => {
-    try {
-      const p = new URLSearchParams();
-      if (search) p.set("search", search);
-      if (statusFilter !== "all") p.set("status", statusFilter);
-      const res = await fetch(`/api/briefs?${p}`);
-      const d = await res.json();
-      setBriefs(d.briefs || []);
-      setTotal(d.total || 0);
-    } catch {} finally { setLoading(false); }
+    try { const p = new URLSearchParams(); if (search) p.set("search", search); if (statusFilter !== "all") p.set("status", statusFilter); const r = await fetch(`/api/briefs?${p}`); const d = await r.json(); setBriefs(d.briefs || []); setTotal(d.total || 0); } catch {} finally { setLoading(false); }
   }, [search, statusFilter]);
 
   useEffect(() => { setLoading(true); const t = setTimeout(loadBriefs, 300); return () => clearTimeout(t); }, [loadBriefs]);
 
   const copyLink = (token: string) => { navigator.clipboard.writeText(`${window.location.origin}/brief/${token}`); setCopiedId(token); setTimeout(() => setCopiedId(null), 2000); };
-
-  const deleteBrief = async (id: string) => {
-    if (!confirm("Supprimer définitivement ce brief ?")) return;
-    setDeletingId(id);
-    try { await fetch(`/api/briefs/${id}`, { method: "DELETE" }); loadBriefs(); }
-    finally { setDeletingId(null); }
-  };
-
-  const archiveBrief = async (id: string) => {
-    setActioningId(id);
-    try { await fetch(`/api/briefs/${id}/archive`, { method: "PUT" }); loadBriefs(); }
-    finally { setActioningId(null); }
-  };
-
-  const duplicateBrief = async (id: string) => {
-    setActioningId(id);
-    try {
-      const res = await fetch(`/api/briefs/${id}/duplicate`, { method: "POST" });
-      if (res.ok) loadBriefs();
-    } finally { setActioningId(null); }
-  };
-
-  const openNotes = (brief: Brief) => {
-    setNotesBrief(brief);
-    setNotesText(brief.internal_notes || "");
-  };
-
-  const saveNotes = async () => {
-    if (!notesBrief) return;
-    setSavingNotes(true);
-    try {
-      await fetch(`/api/briefs/${notesBrief.id}/notes`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: notesText }),
-      });
-      loadBriefs();
-      setNotesBrief(null);
-    } finally { setSavingNotes(false); }
-  };
-
-  const downloadBrief = (brief: Brief) => {
-    if (!brief.submission) return;
-    const s = brief.submission;
-    const ps = s.project_scope;
-    const sl = s.seo_legal;
-    const lines = [
-      `BRIEF CLIENT — ${brief.project_name}`, "=".repeat(50),
-      `Client: ${brief.client_name}`, `Email: ${brief.client_email}`,
-      `Date: ${new Date(brief.created_at).toLocaleDateString("fr-FR")}`, "",
-      "--- ENTREPRISE ---",
-      `Nom: ${s.business_info?.business_name || "—"}`,
-      `Slogan: ${s.business_info?.tagline || "—"}`,
-      `Activité: ${s.business_info?.activity_description || "—"}`,
-      `Clientèle: ${s.business_info?.target_audience || "—"}`,
-      `USP: ${s.business_info?.unique_selling_point || "—"}`,
-      `Adresse: ${s.business_info?.address || "—"}`,
-      `Tél: ${s.business_info?.phone || "—"}`,
-      `Email: ${s.business_info?.email || "—"}`,
-      `Horaires: ${s.business_info?.opening_hours || "—"}`, "",
-      "--- IDENTITÉ VISUELLE ---",
-      `Couleurs: ${s.visual_identity?.primary_color} / ${s.visual_identity?.secondary_color} / ${s.visual_identity?.accent_color}`,
-      `Style: ${s.visual_identity?.style_preference || "—"}`,
-      `Logo: ${s.visual_identity?.has_logo ? "Fourni" : "À créer"}`, "",
-      "--- CONTENUS ---",
-      `Hero: ${s.content?.hero_title || "—"}`,
-      `Sous-titre: ${s.content?.hero_subtitle || "—"}`,
-      `À propos: ${s.content?.about_text || "—"}`,
-      `CTA: ${s.content?.cta_text || "—"}`, "",
-      "--- SERVICES ---",
-      ...(s.content?.services || []).filter(sv => sv.title).map(sv => `• ${sv.title}${sv.price ? ` (${sv.price})` : ""} — ${sv.description}`), "",
-      "--- PROJET ---",
-      `Pages: ${ps?.pages_wanted?.join(", ") || "—"}`,
-      `Fonctionnalités: ${ps?.features?.join(", ") || "—"}`,
-      `Domaine: ${ps?.has_domain ? (ps?.domain_name || "Existant") : "À acheter"}`,
-      `Ton: ${ps?.tone || "—"}`,
-      `Deadline: ${ps?.deadline || "—"}`,
-      `Budget: ${ps?.budget || "—"}`,
-      `Langues: ${ps?.languages?.join(", ") || "—"}`,
-      `Concurrents: ${ps?.competitors?.filter(Boolean).join(", ") || "—"}`, "",
-      "--- SEO ---",
-      `Mots-clés: ${sl?.keywords || "—"}`,
-      `Meta: ${sl?.meta_description || "—"}`, "",
-      "--- LÉGAL ---",
-      `SIRET: ${sl?.siret || "—"}`,
-      `Statut: ${sl?.legal_status || "—"}`,
-      `Responsable: ${sl?.legal_name || "—"}`, "",
-      "--- RÉSEAUX ---",
-      ...Object.entries(s.social_links || {}).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`), "",
-      "--- NOTES CLIENT ---", s.additional_notes || "Aucune",
-      ...(brief.internal_notes ? ["", "--- NOTES INTERNES ---", brief.internal_notes] : []),
-    ];
-    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `brief-${brief.project_name.toLowerCase().replace(/\s+/g, "-")}.txt`; a.click(); URL.revokeObjectURL(url);
-  };
-
+  const handleDelete = async (id: string) => { if (!confirm("Supprimer définitivement ?")) return; setDeletingId(id); try { await fetch(`/api/briefs/${id}`, { method: "DELETE" }); loadBriefs(); } finally { setDeletingId(null); } };
+  const handleArchive = async (id: string) => { setActioningId(id); try { await fetch(`/api/briefs/${id}/archive`, { method: "PUT" }); loadBriefs(); } finally { setActioningId(null); } };
+  const handleDuplicate = async (id: string) => { setActioningId(id); try { const r = await fetch(`/api/briefs/${id}/duplicate`, { method: "POST" }); if (r.ok) loadBriefs(); } finally { setActioningId(null); } };
+  const openNotes = (brief: Brief) => { setNotesBrief(brief); setNotesText(brief.internal_notes || ""); };
+  const saveNotes = async () => { if (!notesBrief) return; setSavingNotes(true); try { await fetch(`/api/briefs/${notesBrief.id}/notes`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notes: notesText }) }); loadBriefs(); setNotesBrief(null); } finally { setSavingNotes(false); } };
+  const downloadBrief = (brief: Brief) => { if (!brief.submission) return; const s = brief.submission; const ps = s.project_scope; const sl = s.seo_legal; const lines = [`BRIEF — ${brief.project_name}`, `Client: ${brief.client_name}`, `Email: ${brief.client_email}`, "", `Nom: ${s.business_info?.business_name || "—"}`, `Activité: ${s.business_info?.activity_description || "—"}`, `Hero: ${s.content?.hero_title || "—"}`, `Pages: ${ps?.pages_wanted?.join(", ") || "—"}`, `Budget: ${ps?.budget || "—"}`, `Deadline: ${ps?.deadline || "—"}`, `Mots-clés: ${sl?.keywords || "—"}`, `SIRET: ${sl?.siret || "—"}`]; const b = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = `brief-${brief.project_name.toLowerCase().replace(/\s+/g, "-")}.txt`; a.click(); URL.revokeObjectURL(u); };
   const handleLogout = async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; };
 
   const statusLabels: Record<string, string> = { pending: "En attente", in_progress: "En cours", completed: "Complété", archived: "Archivé" };
@@ -146,45 +48,45 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen">
       <header className="glass-card" style={{ borderRadius: 0, borderTop: "none", borderLeft: "none", borderRight: "none" }}>
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Link href="/" className="text-txt-muted hover:text-txt-secondary transition-colors"><ArrowLeft className="w-4 h-4" /></Link>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-ice-400 to-ice-600 flex items-center justify-center shadow-md shadow-ice-400/20"><ClipboardList className="w-4 h-4 text-white" /></div>
-              <span className="font-semibold text-[14px]">Dashboard</span>
+              <span className="font-semibold text-[13px] sm:text-[14px]">Dashboard</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setShowCreate(true)} className="btn-primary"><Plus className="w-4 h-4" /> Nouveau brief</button>
-            <button onClick={handleLogout} className="btn-secondary !py-2 !px-3"><LogOut className="w-4 h-4" /></button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={() => setShowCreate(true)} className="btn-primary text-[12px] sm:text-[13px] !px-3 sm:!px-5"><Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nouveau brief</span><span className="sm:hidden">Nouveau</span></button>
+            <button onClick={handleLogout} className="btn-secondary !py-2 !px-2.5 sm:!px-3"><LogOut className="w-4 h-4" /></button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-6 sm:mb-8">
           {[
             { label: "Total", value: total, color: "text-txt-primary", icon: ClipboardList },
             { label: "En attente", value: briefs.filter(b => b.status === "pending").length, color: "text-amber-600", icon: AlertCircle },
             { label: "En cours", value: briefs.filter(b => b.status === "in_progress").length, color: "text-ice-600", icon: Clock },
             { label: "Complétés", value: briefs.filter(b => b.status === "completed").length, color: "text-emerald-600", icon: CheckCircle2 },
           ].map(s => (
-            <div key={s.label} className="glass-card p-5">
-              <div className="flex items-center gap-2 mb-2"><s.icon className={`w-3.5 h-3.5 ${s.color}`} /><p className="text-[12px] text-txt-muted">{s.label}</p></div>
-              <p className={`text-[22px] font-bold ${s.color}`}>{s.value}</p>
+            <div key={s.label} className="glass-card p-3 sm:p-5">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2"><s.icon className={`w-3 sm:w-3.5 h-3 sm:h-3.5 ${s.color}`} /><p className="text-[11px] sm:text-[12px] text-txt-muted">{s.label}</p></div>
+              <p className={`text-[18px] sm:text-[22px] font-bold ${s.color}`}>{s.value}</p>
             </div>
           ))}
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="relative flex-1"><Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-txt-muted" /><input type="text" className="input-field !pl-11" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} /></div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="w-4 h-4 text-txt-muted" />
+        <div className="flex flex-col gap-3 mb-6">
+          <div className="relative"><Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-txt-muted" /><input type="text" className="input-field !pl-11" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} /></div>
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1">
+            <Filter className="w-4 h-4 text-txt-muted shrink-0" />
             {["all", "pending", "in_progress", "completed", "archived"].map(s => (
               <button key={s} onClick={() => setStatusFilter(s)}
-                className={`px-3 py-2 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${statusFilter === s ? "bg-ice-500 text-white shadow-md shadow-ice-400/20" : "glass-card !rounded-lg text-txt-secondary hover:text-ice-600"}`}>
+                className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${statusFilter === s ? "bg-ice-500 text-white shadow-md shadow-ice-400/20" : "glass-card !rounded-lg text-txt-secondary"}`}>
                 {s === "all" ? "Tous" : statusLabels[s]}
               </button>
             ))}
@@ -194,11 +96,11 @@ export default function DashboardPage() {
         {/* List */}
         {loading ? <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-ice-500" /></div>
         : briefs.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center mx-auto mb-4"><ClipboardList className="w-8 h-8 text-txt-muted" /></div>
-            <h3 className="font-semibold text-[16px] mb-2">{search || statusFilter !== "all" ? "Aucun résultat" : "Aucun brief"}</h3>
-            <p className="text-txt-secondary text-[13px] mb-6">{search || statusFilter !== "all" ? "Modifiez vos filtres" : "Créez votre premier brief"}</p>
-            {!search && statusFilter === "all" && <button onClick={() => setShowCreate(true)} className="btn-primary"><Plus className="w-4 h-4" /> Créer un brief</button>}
+          <div className="text-center py-16 sm:py-20">
+            <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl glass-card flex items-center justify-center mx-auto mb-4"><ClipboardList className="w-7 sm:w-8 h-7 sm:h-8 text-txt-muted" /></div>
+            <h3 className="font-semibold text-[15px] sm:text-[16px] mb-2">{search || statusFilter !== "all" ? "Aucun résultat" : "Aucun brief"}</h3>
+            <p className="text-txt-secondary text-[12px] sm:text-[13px] mb-6">{search || statusFilter !== "all" ? "Modifiez vos filtres" : "Créez votre premier brief"}</p>
+            {!search && statusFilter === "all" && <button onClick={() => setShowCreate(true)} className="btn-primary w-full sm:w-auto"><Plus className="w-4 h-4" /> Créer un brief</button>}
           </div>
         ) : (
           <div className="space-y-3">
@@ -206,43 +108,65 @@ export default function DashboardPage() {
               const { score } = computeCompletenessScore(brief.submission || brief.draft_submission);
               const SIcon = statusIcons[brief.status] || AlertCircle;
               const isArchived = brief.status === "archived";
+              const isExpanded = expandedId === brief.id;
               return (
-                <div key={brief.id} className={`glass-card p-5 flex items-center justify-between group hover:shadow-lg hover:shadow-ice-300/10 transition-all ${isArchived ? "opacity-60" : ""}`}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1.5">
-                      <h3 className="font-semibold text-[14px] truncate">{brief.project_name}</h3>
-                      <span className={`badge-${brief.status === "archived" ? "pending" : brief.status}`}><SIcon className="w-3 h-3" />{statusLabels[brief.status]}</span>
-                      {brief.status === "in_progress" && brief.current_step && <span className="text-[11px] px-2 py-0.5 rounded-full bg-ice-100/60 text-ice-600">{stepLabels[brief.current_step]}</span>}
-                      {brief.internal_notes && <span title="Notes internes"><FileText className="w-3 h-3 text-amber-400" /></span>}
+                <div key={brief.id} className={`glass-card p-4 sm:p-5 transition-all ${isArchived ? "opacity-60" : ""}`}>
+                  {/* Main row - always visible */}
+                  <div className="flex items-start sm:items-center justify-between gap-3 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : brief.id)}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-1 flex-wrap">
+                        <h3 className="font-semibold text-[13px] sm:text-[14px] truncate max-w-[180px] sm:max-w-none">{brief.project_name}</h3>
+                        <span className={`badge-${brief.status === "archived" ? "pending" : brief.status}`}><SIcon className="w-3 h-3" />{statusLabels[brief.status]}</span>
+                        {brief.status === "in_progress" && brief.current_step && <span className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-ice-100/60 text-ice-600 hidden sm:inline">{stepLabels[brief.current_step]}</span>}
+                        {brief.internal_notes && <span><FileText className="w-3 h-3 text-amber-400" /></span>}
+                      </div>
+                      <p className="text-[11px] sm:text-[12px] text-txt-secondary truncate">{brief.client_name} · {brief.client_email}</p>
+                      <div className="flex items-center gap-3 sm:gap-4 mt-1.5 sm:mt-2">
+                        <p className="text-[10px] sm:text-[11px] text-txt-muted">{new Date(brief.created_at).toLocaleDateString("fr-FR")}</p>
+                        {(brief.submission || brief.draft_submission) && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 sm:w-20 h-1.5 rounded-full bg-ice-100/50 overflow-hidden"><div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, background: score >= 80 ? "#10B981" : score >= 50 ? "#F59E0B" : "#EF4444" }} /></div>
+                            <span className="text-[10px] sm:text-[11px] text-txt-muted">{score}%</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-[12px] text-txt-secondary">{brief.client_name} · {brief.client_email}</p>
-                    <div className="flex items-center gap-4 mt-2">
-                      <p className="text-[11px] text-txt-muted">{new Date(brief.created_at).toLocaleDateString("fr-FR")}</p>
-                      {(brief.submission || brief.draft_submission) && (
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 h-1.5 rounded-full bg-ice-100/50 overflow-hidden"><div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, background: score >= 80 ? "#10B981" : score >= 50 ? "#F59E0B" : "#EF4444" }} /></div>
-                          <span className="text-[11px] text-txt-muted">{score}%</span>
-                        </div>
+                    {/* Desktop actions - hidden on mobile */}
+                    <div className="hidden sm:flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" style={{ opacity: 1 }}>
+                      <button onClick={e => { e.stopPropagation(); copyLink(brief.token); }} className="btn-secondary !py-2 !px-2.5">{copiedId === brief.token ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}</button>
+                      <Link href={`/brief/${brief.token}`} target="_blank" className="btn-secondary !py-2 !px-2.5" onClick={e => e.stopPropagation()}><ExternalLink className="w-3.5 h-3.5" /></Link>
+                      <button onClick={e => { e.stopPropagation(); openNotes(brief); }} className="btn-secondary !py-2 !px-2.5"><FileText className="w-3.5 h-3.5" /></button>
+                      <button onClick={e => { e.stopPropagation(); handleDuplicate(brief.id); }} disabled={actioningId === brief.id} className="btn-secondary !py-2 !px-2.5">{actioningId === brief.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CopyPlus className="w-3.5 h-3.5" />}</button>
+                      {brief.status === "completed" && (
+                        <>
+                          <button onClick={e => { e.stopPropagation(); setJsonBrief(brief); }} className="btn-primary !py-2 !px-2.5"><FileJson2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={e => { e.stopPropagation(); downloadBrief(brief); }} className="btn-secondary !py-2 !px-2.5"><Download className="w-3.5 h-3.5" /></button>
+                          <button onClick={e => { e.stopPropagation(); setAnalysisBrief(brief); }} className="btn-secondary !py-2 !px-2.5 !text-violet-500"><Sparkles className="w-3.5 h-3.5" /></button>
+                        </>
                       )}
+                      {!isArchived && <button onClick={e => { e.stopPropagation(); handleArchive(brief.id); }} className="btn-secondary !py-2 !px-2.5 !text-amber-500"><Archive className="w-3.5 h-3.5" /></button>}
+                      <button onClick={e => { e.stopPropagation(); handleDelete(brief.id); }} disabled={deletingId === brief.id} className="btn-danger !py-2 !px-2.5">{deletingId === brief.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}</button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-4">
-                    <button onClick={() => copyLink(brief.token)} className="btn-secondary !py-2 !px-2.5" title="Copier le lien">{copiedId === brief.token ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}</button>
-                    <Link href={`/brief/${brief.token}`} target="_blank" className="btn-secondary !py-2 !px-2.5" title="Voir"><ExternalLink className="w-3.5 h-3.5" /></Link>
-                    <button onClick={() => openNotes(brief)} className="btn-secondary !py-2 !px-2.5" title="Notes internes"><FileText className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => duplicateBrief(brief.id)} disabled={actioningId === brief.id} className="btn-secondary !py-2 !px-2.5" title="Dupliquer">{actioningId === brief.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CopyPlus className="w-3.5 h-3.5" />}</button>
-                    {brief.status === "completed" && (
-                      <>
-                        <button onClick={() => setJsonBrief(brief)} className="btn-primary !py-2 !px-2.5" title="JSON"><FileJson2 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => downloadBrief(brief)} className="btn-secondary !py-2 !px-2.5" title="Télécharger"><Download className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setAnalysisBrief(brief)} className="btn-secondary !py-2 !px-2.5 !text-violet-500 hover:!bg-violet-50" title="Analyse IA"><Sparkles className="w-3.5 h-3.5" /></button>
-                      </>
-                    )}
-                    {!isArchived && (
-                      <button onClick={() => archiveBrief(brief.id)} className="btn-secondary !py-2 !px-2.5 !text-amber-500 hover:!bg-amber-50" title="Archiver"><Archive className="w-3.5 h-3.5" /></button>
-                    )}
-                    <button onClick={() => deleteBrief(brief.id)} disabled={deletingId === brief.id} className="btn-danger !py-2 !px-2.5" title="Supprimer">{deletingId === brief.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}</button>
-                  </div>
+
+                  {/* Mobile actions - shown on tap */}
+                  {isExpanded && (
+                    <div className="sm:hidden mt-3 pt-3 border-t border-ice-100/50 grid grid-cols-4 gap-2">
+                      <button onClick={() => copyLink(brief.token)} className="btn-secondary !py-2.5 !px-0 flex-col !gap-1 text-[10px]">{copiedId === brief.token ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}Copier</button>
+                      <Link href={`/brief/${brief.token}`} target="_blank" className="btn-secondary !py-2.5 !px-0 flex-col !gap-1 text-[10px]"><ExternalLink className="w-4 h-4" />Voir</Link>
+                      <button onClick={() => openNotes(brief)} className="btn-secondary !py-2.5 !px-0 flex-col !gap-1 text-[10px]"><FileText className="w-4 h-4" />Notes</button>
+                      <button onClick={() => handleDuplicate(brief.id)} className="btn-secondary !py-2.5 !px-0 flex-col !gap-1 text-[10px]"><CopyPlus className="w-4 h-4" />Dupliquer</button>
+                      {brief.status === "completed" && (
+                        <>
+                          <button onClick={() => setJsonBrief(brief)} className="btn-primary !py-2.5 !px-0 flex-col !gap-1 text-[10px]"><FileJson2 className="w-4 h-4" />JSON</button>
+                          <button onClick={() => downloadBrief(brief)} className="btn-secondary !py-2.5 !px-0 flex-col !gap-1 text-[10px]"><Download className="w-4 h-4" />Export</button>
+                          <button onClick={() => setAnalysisBrief(brief)} className="btn-secondary !py-2.5 !px-0 flex-col !gap-1 text-[10px] !text-violet-500"><Sparkles className="w-4 h-4" />IA</button>
+                        </>
+                      )}
+                      {!isArchived && <button onClick={() => handleArchive(brief.id)} className="btn-secondary !py-2.5 !px-0 flex-col !gap-1 text-[10px] !text-amber-500"><Archive className="w-4 h-4" />Archiver</button>}
+                      <button onClick={() => handleDelete(brief.id)} className="btn-danger !py-2.5 !px-0 flex-col !gap-1 text-[10px]"><Trash2 className="w-4 h-4" />Suppr.</button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -252,15 +176,14 @@ export default function DashboardPage() {
 
       {/* Notes Modal */}
       {notesBrief && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-ice-900/20 backdrop-blur-sm" onClick={() => setNotesBrief(null)} />
-          <div className="relative w-full max-w-md p-6 glass-card-glow animate-slide-up" style={{ borderRadius: 20 }}>
+          <div className="relative w-full sm:max-w-md p-6 glass-card-glow animate-slide-up rounded-t-2xl sm:rounded-2xl">
             <button onClick={() => setNotesBrief(null)} className="absolute top-4 right-4 p-2 rounded-lg hover:bg-ice-100/50 text-txt-muted cursor-pointer"><X className="w-4 h-4" /></button>
-            <div className="flex items-center gap-2 mb-1"><FileText className="w-4 h-4 text-amber-500" /><h2 className="text-[16px] font-semibold">Notes internes</h2></div>
-            <p className="text-[12px] text-txt-muted mb-4">{notesBrief.project_name} — Visibles uniquement par vous</p>
-            <textarea className="textarea-field !min-h-[140px]" placeholder="Prix discuté, remarques, deadline convenue, to-do..." maxLength={5000} value={notesText} onChange={e => setNotesText(e.target.value)} />
-            <span className="text-[11px] text-txt-ghost block mt-1 mb-4">{notesText.length}/5000</span>
-            <div className="flex gap-3">
+            <div className="flex items-center gap-2 mb-1"><FileText className="w-4 h-4 text-amber-500" /><h2 className="text-[15px] sm:text-[16px] font-semibold">Notes internes</h2></div>
+            <p className="text-[11px] sm:text-[12px] text-txt-muted mb-4">{notesBrief.project_name}</p>
+            <textarea className="textarea-field !min-h-[120px] sm:!min-h-[140px]" placeholder="Prix, remarques, to-do..." maxLength={5000} value={notesText} onChange={e => setNotesText(e.target.value)} />
+            <div className="flex gap-3 mt-4">
               <button onClick={() => setNotesBrief(null)} className="btn-secondary flex-1">Annuler</button>
               <button onClick={saveNotes} disabled={savingNotes} className="btn-primary flex-1">{savingNotes ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer"}</button>
             </div>
